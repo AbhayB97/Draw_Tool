@@ -1,0 +1,14 @@
+{
+  "rewrites": [
+    {
+      "source": "/draw_tool",
+      "destination": "/"
+    },
+    {
+      "source": "/draw_tool/:path*",
+      "destination": "/:path*"
+    }
+  ],
+  "cleanUrls": true,
+  "trailingSlash": false
+}
