@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Photo to Pattern Converter</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+
+    canvas {
+      border: 1px solid #ccc;
+      margin-top: 10px;
+      max-width: 100%;
+    }
+
+    label {
+      display: block;
+      margin: 10px 0 5px;
+    }
+
+    #controls {
+      margin-top: 20px;
+    }
+
+    #downloadBtn {
+      margin-top: 15px;
+      padding: 10px 15px;
+      background: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #downloadBtn:hover {
+      background-color: #0056b3;
+    }
+  </style>
+
+  <!-- OpenCV.js -->
+  <script>
+    let Module = {
+      onRuntimeInitialized() {
+        console.log("✅ OpenCV is ready.");
+        window.opencvReady = true;
+        if (window.domReady) {
+          initApp();
+        }
+      }
+    };
+  </script>
+  <script src="https://docs.opencv.org/4.x/opencv.js"></script>
+</head>
+<body>
+  <h2>Photo to Pattern Converter (Thin Mode)</h2>
+
+  <input type="file" id="upload" accept="image/*"><br>
+
+  <canvas id="sourceCanvas"></canvas>
+  <canvas id="outputCanvas"></canvas>
+
+  <div id="controls">
+    <label for="sharpness">Sharpness Level (Thin):</label>
+    <input type="range" id="sharpness" min="1" max="10" value="1">
+    <button id="downloadBtn">Download Output</button>
+  </div>
+
+  <script>
+    // Wait for DOM to be ready
+    window.addEventListener('DOMContentLoaded', () => {
+      window.domReady = true;
+      if (window.opencvReady) {
+        initApp();
+      }
+    });
+
+    function initApp() {
+      const upload = document.getElementById('upload');
+      const sourceCanvas = document.getElementById('sourceCanvas');
+      const outputCanvas = document.getElementById('outputCanvas');
+      const sharpnessSlider = document.getElementById('sharpness');
+      const downloadBtn = document.getElementById('downloadBtn');
+
+      const srcCtx = sourceCanvas.getContext('2d');
+
+      let originalImage = new Image();
+
+      upload.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          originalImage.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+
+      originalImage.onload = () => {
+        sourceCanvas.width = originalImage.width;
+        sourceCanvas.height = originalImage.height;
+        outputCanvas.width = originalImage.width;
+        outputCanvas.height = originalImage.height;
+
+        srcCtx.drawImage(originalImage, 0, 0);
+        processThin();
+      };
+
+      sharpnessSlider.addEventListener('input', processThin);
+
+      function processThin() {
+  const sharpness = parseInt(sharpnessSlider.value);
+
+  let src = cv.imread(sourceCanvas);
+  let gray = new cv.Mat();
+  let blurred = new cv.Mat();
+  let edges = new cv.Mat();
+  let result = new cv.Mat();
+
+  // Convert to grayscale
+  cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+  // Use bilateral filter to preserve edges
+  cv.bilateralFilter(gray, blurred, 9, sharpness * 5, sharpness * 5);
+
+  // Dynamic thresholds for better control
+  const lowThresh = 30;
+  const highThresh = 90 + (sharpness * 10);
+  cv.Canny(blurred, edges, lowThresh, highThresh);
+
+  // No erosion needed; Canny + bilateral should be clean
+  cv.bitwise_not(edges, result);
+  cv.imshow(outputCanvas, result);
+
+  // Cleanup
+  src.delete(); gray.delete(); blurred.delete(); edges.delete(); result.delete();
+}
+
+
+      downloadBtn.addEventListener('click', () => {
+        const link = document.createElement('a');
+        link.download = 'pattern-thin-output.png';
+        link.href = outputCanvas.toDataURL();
+        link.click();
+      });
+    }
+  </script>
+</body>
+</html>
